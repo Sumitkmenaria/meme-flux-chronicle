@@ -119,5 +119,21 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
+  }
+
+  /* Hide scrollbar for reel */
+  .reel-container {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .reel-container::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Touch improvements for mobile */
+  * {
+    -webkit-tap-highlight-color: transparent;
   }
 }

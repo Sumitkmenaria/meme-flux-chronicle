@@ -2,7 +2,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Upload, TrendingUp, Clock, Users, Zap } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AuthModal } from "./AuthModal";
+import { useAuth } from "@/hooks/useAuth";
+import { Search, Upload, TrendingUp, Clock, Users, Zap, User } from "lucide-react";
 
 const categories = [
   { name: "All", icon: Zap, active: true },
@@ -14,6 +17,7 @@ const categories = [
 export const Header = () => {
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const { user } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
@@ -34,10 +38,27 @@ export const Header = () => {
             </div>
           </div>
           
-          <Button variant="upload" className="gap-2">
-            <Upload className="h-4 w-4" />
-            Upload Meme
-          </Button>
+          {user ? (
+            <div className="flex items-center gap-3">
+              <Button variant="upload" className="gap-2">
+                <Upload className="h-4 w-4" />
+                Upload
+              </Button>
+              <Avatar className="w-8 h-8">
+                <AvatarImage src={user.user_metadata?.avatar_url} />
+                <AvatarFallback className="bg-gradient-primary text-white text-sm">
+                  {user.user_metadata?.username?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          ) : (
+            <AuthModal>
+              <Button variant="upload" className="gap-2">
+                <User className="h-4 w-4" />
+                Sign In
+              </Button>
+            </AuthModal>
+          )}
         </div>
 
         {/* Search Bar */}
