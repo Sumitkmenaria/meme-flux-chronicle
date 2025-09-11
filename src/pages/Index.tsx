@@ -7,6 +7,7 @@ import { AuthModal } from "@/components/AuthModal";
 import { Button } from "@/components/ui/button";
 import { MemeGrid } from "@/components/MemeGrid";
 import { useAuth } from "@/hooks/useAuth";
+import { Grid3X3, Play } from "lucide-react";
 
 // Mock data for the reel
 const mockMemes = [
@@ -69,12 +70,55 @@ const mockMemes = [
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
+  const [viewMode, setViewMode] = useState<"reel" | "grid">("reel");
   const { user } = useAuth();
 
   const renderContent = () => {
     switch (activeTab) {
       case "home":
-        return <MemeReel memes={mockMemes} />;
+        return (
+          <div className="relative">
+            {/* View Toggle */}
+            <div className="absolute top-4 right-4 z-50 flex bg-black/20 backdrop-blur-sm rounded-full p-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode("reel")}
+                className={`rounded-full h-10 w-10 p-0 ${
+                  viewMode === "reel" 
+                    ? 'bg-white/20 text-white' 
+                    : 'text-white/70 hover:bg-white/10'
+                }`}
+              >
+                <Play className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode("grid")}
+                className={`rounded-full h-10 w-10 p-0 ${
+                  viewMode === "grid" 
+                    ? 'bg-white/20 text-white' 
+                    : 'text-white/70 hover:bg-white/10'
+                }`}
+              >
+                <Grid3X3 className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {/* Content */}
+            {viewMode === "reel" ? (
+              <MemeReel memes={mockMemes} />
+            ) : (
+              <div className="min-h-screen bg-background pb-20">
+                <div className="pt-16 px-4">
+                  <h1 className="text-2xl font-bold mb-6">Meme Gallery</h1>
+                  <MemeGrid />
+                </div>
+              </div>
+            )}
+          </div>
+        );
       case "trending":
         return <TrendingPage />;
       case "upload":
