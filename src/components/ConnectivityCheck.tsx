@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Wifi, WifiOff } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 export const ConnectivityCheck = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -17,13 +18,16 @@ export const ConnectivityCheck = () => {
     // Test Supabase connectivity
     const testSupabaseConnection = async () => {
       try {
-        const response = await fetch('https://lxplltkueismoiyhorjh.supabase.co/rest/v1/', {
-          method: 'HEAD',
-          headers: {
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx4cGxsdGt1ZWlzbW9peWhvcmpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0ODIxMDQsImV4cCI6MjA3MzA1ODEwNH0.UUoRJ6pj-lw1jk55OpCnBF1XXBma4eO4r5FrVfZgRdk'
-          }
-        });
-        setSupabaseConnected(response.ok);
+        // Test Supabase connection by making a simple query
+        const { data, error } = await supabase.from('profiles').select('count').limit(1);
+        
+        if (error && error.code !== 'PGRST116') { // PGRST116 is "relation does not exist" which is expected if tables aren't created yet
+          console.error('Supabase connectivity test failed:', error);
+          setSupabaseConnected(false);
+          setExtensionWarning(true);
+        } else {
+          setSupabaseConnected(true);
+        }
       } catch (err) {
         console.error('Supabase connectivity test failed:', err);
         setSupabaseConnected(false);
