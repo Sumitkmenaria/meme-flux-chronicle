@@ -25,26 +25,64 @@ export const useAuth = () => {
   }, [])
 
   const signUp = async (email: string, password: string, username: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          username,
+    try {
+      console.log('Starting signup process...', { email, username });
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            username,
+          },
         },
-      },
-    });
-    return { data, error };
+      });
+      
+      if (error) {
+        console.error('Signup error:', error);
+      } else {
+        console.log('Signup successful:', data);
+      }
+      
+      return { data, error };
+    } catch (err) {
+      console.error('Signup failed with exception:', err);
+      return { 
+        data: null, 
+        error: { 
+          message: err instanceof Error ? err.message : 'Network error - please disable browser extensions and try again' 
+        } 
+      };
+    }
   }
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    return { data, error }
+    try {
+      console.log('Starting signin process...', { email });
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        console.error('Signin error:', error);
+      } else {
+        console.log('Signin successful:', data);
+      }
+      
+      return { data, error };
+    } catch (err) {
+      console.error('Signin failed with exception:', err);
+      return { 
+        data: null, 
+        error: { 
+          message: err instanceof Error ? err.message : 'Network error - please disable browser extensions and try again' 
+        } 
+      };
+    }
   }
 
   const signOut = async () => {

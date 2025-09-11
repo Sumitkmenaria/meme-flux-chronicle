@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { ConnectivityCheck } from "@/components/ConnectivityCheck";
 import { Loader2, Mail, Lock, User } from "lucide-react";
 
 interface AuthModalProps {
@@ -114,6 +115,7 @@ export const AuthModal = ({ children }: AuthModalProps) => {
           </CardHeader>
           
           <CardContent>
+            <ConnectivityCheck />
             <Tabs defaultValue="login" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">Login</TabsTrigger>
