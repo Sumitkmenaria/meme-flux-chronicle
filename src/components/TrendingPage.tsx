@@ -2,34 +2,9 @@ import { useState } from "react";
 import { MemeCard } from "./MemeCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useMemes } from "@/hooks/useMemes";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, Clock, Flame, Calendar } from "lucide-react";
-
-// Mock trending data
-const trendingMemes = [
-  {
-    id: "t1",
-    title: "When AI finally understands my code",
-    imageUrl: "https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=400&h=400&fit=crop",
-    upvotes: 5247,
-    downvotes: 123,
-    comments: 856,
-    tags: ["ai", "programming", "relatable"],
-    author: "techguru",
-    timeAgo: "2h ago"
-  },
-  {
-    id: "t2",
-    title: "Me explaining why I need 32GB RAM for coding",
-    imageUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=400&fit=crop",
-    upvotes: 4892,
-    downvotes: 89,
-    comments: 723,
-    tags: ["programming", "hardware", "funny"],
-    author: "rammaster",
-    timeAgo: "4h ago"
-  },
-  // ... more trending memes
-];
 
 const timeFilters = [
   { id: "today", label: "Today", icon: Clock },
@@ -40,6 +15,7 @@ const timeFilters = [
 
 export const TrendingPage = () => {
   const [activeFilter, setActiveFilter] = useState("today");
+  const { memes, loading } = useMemes();
 
   return (
     <div className="h-full overflow-y-auto pb-20">
@@ -116,27 +92,69 @@ export const TrendingPage = () => {
         </div>
 
         {/* Meme Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {trendingMemes.map((meme, index) => (
-            <div key={meme.id} className="relative">
-              {index < 3 && (
-                <div className="absolute -top-2 -right-2 z-10">
-                  <Badge className={`
-                    ${index === 0 ? 'bg-yellow-500 text-black' : ''}
-                    ${index === 1 ? 'bg-gray-400 text-black' : ''}
-                    ${index === 2 ? 'bg-amber-600 text-white' : ''}
-                  `}>
-                    #{index + 1}
-                  </Badge>
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-gradient-card rounded-lg p-4 border border-border/50">
+                <div className="flex items-center gap-2 mb-3">
+                  <Skeleton className="w-6 h-6 rounded-full" />
+                  <Skeleton className="h-4 w-32" />
                 </div>
-              )}
-              <MemeCard {...meme} />
-            </div>
-          ))}
-        </div>
+                <Skeleton className="h-6 w-full mb-3" />
+                <Skeleton className="h-48 w-full mb-4 rounded-lg" />
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-8 w-24 rounded-full" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-8 w-8 rounded" />
+                    <Skeleton className="h-8 w-8 rounded" />
+                    <Skeleton className="h-8 w-8 rounded" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : memes.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {memes
+              .sort((a, b) => (b.upvotes - b.downvotes) - (a.upvotes - a.downvotes))
+              .map((meme, index) => (
+                <div key={meme.id} className="relative">
+                  {index < 3 && (
+                    <div className="absolute -top-2 -right-2 z-10">
+                      <Badge className={`
+                        ${index === 0 ? 'bg-yellow-500 text-black' : ''}
+                        ${index === 1 ? 'bg-gray-400 text-black' : ''}
+                        ${index === 2 ? 'bg-amber-600 text-white' : ''}
+                      `}>
+                        #{index + 1}
+                      </Badge>
+                    </div>
+                  )}
+                  <MemeCard meme={meme} />
+                </div>
+              ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <h3 className="text-lg font-semibold mb-2">No trending memes yet</h3>
+            <p className="text-muted-foreground">Be the first to create viral content!</p>
+          </div>
+        )}
 
         {/* Load More */}
-        <div className="flex justify-center mt-8">
+        {memes.length > 0 && (
+          <div className="flex justify-center mt-8">
+            <Button variant="outline" className="gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Load More Trending
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
           <Button variant="outline" className="gap-2">
             <TrendingUp className="h-4 w-4" />
             Load More Trending

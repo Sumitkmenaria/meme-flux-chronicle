@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
+import { useMemes } from "@/hooks/useMemes";
 import { AuthModal } from "./AuthModal";
 import { 
   Settings, 
@@ -17,40 +18,30 @@ import {
   Zap
 } from "lucide-react";
 
-const userStats = [
-  { label: "Memes Posted", value: "142", icon: Upload, color: "text-neon-purple" },
-  { label: "Total Upvotes", value: "28.5k", icon: Heart, color: "text-neon-pink" },
-  { label: "Comments", value: "3.2k", icon: MessageCircle, color: "text-neon-cyan" },
-  { label: "Followers", value: "1.8k", icon: TrendingUp, color: "text-neon-green" },
-];
-
 const achievements = [
   { name: "Meme Lord", description: "Posted 100+ memes", icon: Crown, earned: true },
   { name: "Viral Master", description: "Got 10k+ upvotes on a single meme", icon: Trophy, earned: true },
   { name: "Community Favorite", description: "Top contributor this month", icon: Zap, earned: false },
 ];
 
-const mockUserMemes = [
-  {
-    id: "u1",
-    title: "When you finally fix that bug",
-    imageUrl: "https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=300&h=300&fit=crop",
-    upvotes: 2847,
-    comments: 234,
-  },
-  {
-    id: "u2", 
-    title: "Me explaining my code to the rubber duck",
-    imageUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=300&h=300&fit=crop",
-    upvotes: 1923,
-    comments: 156,
-  },
-  // ... more user memes
-];
-
 export const ProfilePage = () => {
   const { user, signOut } = useAuth();
+  const { memes } = useMemes();
   const [activeTab, setActiveTab] = useState("posts");
+
+  // Filter user's memes
+  const userMemes = memes.filter(meme => meme.user_id === user?.id);
+  
+  // Calculate user stats
+  const totalUpvotes = userMemes.reduce((sum, meme) => sum + meme.upvotes, 0);
+  const totalComments = userMemes.reduce((sum, meme) => sum + meme.comments_count, 0);
+  
+  const userStats = [
+    { label: "Memes Posted", value: userMemes.length.toString(), icon: Upload, color: "text-neon-purple" },
+    { label: "Total Upvotes", value: totalUpvotes > 999 ? `${(totalUpvotes / 1000).toFixed(1)}k` : totalUpvotes.toString(), icon: Heart, color: "text-neon-pink" },
+    { label: "Comments", value: totalComments > 999 ? `${(totalComments / 1000).toFixed(1)}k` : totalComments.toString(), icon: MessageCircle, color: "text-neon-cyan" },
+    { label: "Followers", value: "0", icon: TrendingUp, color: "text-neon-green" },
+  ];
 
   if (!user) {
     return (
@@ -189,11 +180,11 @@ export const ProfilePage = () => {
 
         {/* User Memes Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-          {mockUserMemes.map((meme) => (
+          {userMemes.map((meme) => (
             <Card key={meme.id} className="group cursor-pointer overflow-hidden">
               <div className="relative aspect-square">
                 <img 
-                  src={meme.imageUrl} 
+                  src={meme.image_url} 
                   alt={meme.title}
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
@@ -206,7 +197,7 @@ export const ProfilePage = () => {
                     </span>
                     <span className="flex items-center gap-1">
                       <MessageCircle className="h-3 w-3" />
-                      {meme.comments}
+                      {meme.comments_count}
                     </span>
                   </div>
                 </div>
@@ -214,6 +205,12 @@ export const ProfilePage = () => {
             </Card>
           ))}
         </div>
+        
+        {userMemes.length === 0 && (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">No memes posted yet. Start creating!</p>
+          </div>
+        )}
 
         {/* Sign Out */}
         <div className="text-center">

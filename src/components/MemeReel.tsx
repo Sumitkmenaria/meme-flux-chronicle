@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Heart, 
   MessageCircle, 
@@ -11,53 +12,40 @@ import {
   Volume2,
   VolumeX
 } from "lucide-react";
+import { useMemes, type Meme } from "@/hooks/useMemes";
+import { useAuth } from "@/hooks/useAuth";
+import { AuthModal } from "./AuthModal";
 
 interface MemeReelProps {
-  memes: Array<{
-    id: string;
-    title: string;
-    imageUrl: string;
-    upvotes: number;
-    downvotes: number;
-    comments: number;
-    tags: string[];
-    author: string;
-    timeAgo: string;
-  }>;
+  memes: Meme[];
 }
 
 interface MemeItemProps {
-  meme: {
-    id: string;
-    title: string;
-    imageUrl: string;
-    upvotes: number;
-    downvotes: number;
-    comments: number;
-    tags: string[];
-    author: string;
-    timeAgo: string;
-  };
+  meme: Meme;
   isActive: boolean;
 }
 
 const MemeItem = ({ meme, isActive }: MemeItemProps) => {
-  const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
+  const { voteMeme } = useMemes();
+  const { user } = useAuth();
   const [isLiked, setIsLiked] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
 
   const handleVote = (voteType: 'up' | 'down') => {
-    setUserVote(userVote === voteType ? null : voteType);
+    if (!user) return;
+    voteMeme(meme.id, voteType);
   };
 
   const totalScore = meme.upvotes - meme.downvotes;
+  const timeAgo = new Date(meme.created_at).toLocaleDateString();
+  const author = meme.profiles?.username || 'Anonymous';
 
   return (
     <div className="relative h-screen w-full bg-black flex items-center justify-center overflow-hidden">
       {/* Background Image/Video */}
       <div className="absolute inset-0">
         <img 
-          src={meme.imageUrl} 
+          src={meme.image_url} 
           alt={meme.title}
           className="w-full h-full object-cover"
         />
@@ -69,13 +57,14 @@ const MemeItem = ({ meme, isActive }: MemeItemProps) => {
         {/* Top Info */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-bold">
-                {meme.author.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <span className="text-white font-medium">{meme.author}</span>
-            <span className="text-white/70 text-sm">{meme.timeAgo}</span>
+            <Avatar className="w-8 h-8">
+              <AvatarImage src={meme.profiles?.avatar_url} />
+              <AvatarFallback className="bg-gradient-primary text-white text-sm">
+                {author.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-white font-medium">{author}</span>
+            <span className="text-white/70 text-sm">{timeAgo}</span>
           </div>
           
           <Button
@@ -112,18 +101,30 @@ const MemeItem = ({ meme, isActive }: MemeItemProps) => {
           <div className="flex flex-col items-center gap-4">
             {/* Vote Buttons */}
             <div className="flex flex-col items-center bg-black/20 backdrop-blur-sm rounded-full p-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleVote('up')}
-                className={`rounded-full h-12 w-12 p-0 ${
-                  userVote === 'up' 
-                    ? 'bg-neon-green text-white' 
-                    : 'text-white hover:bg-white/20'
-                }`}
-              >
-                <ChevronUp className="h-6 w-6" />
-              </Button>
+              {user ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleVote('up')}
+                  className={`rounded-full h-12 w-12 p-0 ${
+                    meme.user_vote === 'up' 
+                      ? 'bg-neon-green text-white' 
+                      : 'text-white hover:bg-white/20'
+                  }`}
+                >
+                  <ChevronUp className="h-6 w-6" />
+                </Button>
+              ) : (
+                <AuthModal>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="rounded-full h-12 w-12 p-0 text-white hover:bg-white/20"
+                  >
+                    <ChevronUp className="h-6 w-6" />
+                  </Button>
+                </AuthModal>
+              )}
               
               <span className={`text-sm font-bold my-1 ${
                 totalScore > 0 ? 'text-neon-green' : 
@@ -132,18 +133,30 @@ const MemeItem = ({ meme, isActive }: MemeItemProps) => {
                 {totalScore > 999 ? `${(totalScore / 1000).toFixed(1)}k` : totalScore}
               </span>
               
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleVote('down')}
-                className={`rounded-full h-12 w-12 p-0 ${
-                  userVote === 'down' 
-                    ? 'bg-red-400 text-white' 
-                    : 'text-white hover:bg-white/20'
-                }`}
-              >
-                <ChevronDown className="h-6 w-6" />
-              </Button>
+              {user ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleVote('down')}
+                  className={`rounded-full h-12 w-12 p-0 ${
+                    meme.user_vote === 'down' 
+                      ? 'bg-red-400 text-white' 
+                      : 'text-white hover:bg-white/20'
+                  }`}
+                >
+                  <ChevronDown className="h-6 w-6" />
+                </Button>
+              ) : (
+                <AuthModal>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="rounded-full h-12 w-12 p-0 text-white hover:bg-white/20"
+                  >
+                    <ChevronDown className="h-6 w-6" />
+                  </Button>
+                </AuthModal>
+              )}
             </div>
 
             {/* Like Button */}
@@ -168,7 +181,7 @@ const MemeItem = ({ meme, isActive }: MemeItemProps) => {
             >
               <MessageCircle className="h-6 w-6" />
               <span className="text-xs mt-1">
-                {meme.comments > 999 ? `${(meme.comments / 1000).toFixed(1)}k` : meme.comments}
+                {meme.comments_count > 999 ? `${(meme.comments_count / 1000).toFixed(1)}k` : meme.comments_count}
               </span>
             </Button>
 
@@ -201,6 +214,17 @@ export const MemeReel = ({ memes }: MemeReelProps) => {
   const [startY, setStartY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  if (!memes || memes.length === 0) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-black text-white">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">No memes to show</h2>
+          <p className="text-white/70">Check back later for fresh content!</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setStartY(e.touches[0].clientY);
