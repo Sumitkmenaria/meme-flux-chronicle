@@ -32,6 +32,7 @@ export const useAuth = () => {
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/`,
           data: {
             username,
             full_name: username, // Use username as full_name initially
