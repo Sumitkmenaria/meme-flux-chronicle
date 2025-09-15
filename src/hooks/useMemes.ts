@@ -24,61 +24,100 @@ export interface Meme {
 export const useMemes = () => {
   const [memes, setMemes] = useState<Meme[]>([]);
   const [loading, setLoading] = useState(true);
+  const [connectionError, setConnectionError] = useState<string>('');
   const { user } = useAuth();
   const { toast } = useToast();
 
   const fetchMemes = async () => {
     try {
       setLoading(true);
+      setConnectionError('');
       
-      let query = supabase
+      // Try to fetch memes without joins first (more reliable)
+      const { data: memesData, error } = await supabase
         .from('memes')
-        .select(`
-          *,
-          profiles:user_id (
-            username,
-            avatar_url
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
-
-      const { data: memesData, error } = await query;
 
       if (error) {
         console.error('Error fetching memes:', error);
+        setConnectionError(`Database error: ${error.message}`);
+        
+        // Show fallback data if available
+        if (memes.length === 0) {
+          setMemes([]);
+        }
+        
         toast({
-          title: "Error",
-          description: "Failed to load memes",
+          title: "Connection Issue",
+          description: "Having trouble loading memes. Check your connection.",
           variant: "destructive",
         });
         return;
       }
 
-      // If user is authenticated, fetch their votes
-      if (user && memesData) {
-        const { data: votesData } = await supabase
-          .from('votes')
-          .select('meme_id, vote_type')
-          .eq('user_id', user.id);
+      if (!memesData) {
+        setMemes([]);
+        return;
+      }
 
-        const votesMap = new Map(
-          votesData?.map(vote => [vote.meme_id, vote.vote_type]) || []
+      // Try to enrich with profile data (graceful degradation)
+      try {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url');
+
+        const profilesMap = new Map(
+          profilesData?.map(profile => [profile.id, profile]) || []
         );
 
-        const memesWithVotes = memesData.map(meme => ({
+        const enrichedMemes = memesData.map(meme => ({
           ...meme,
-          user_vote: votesMap.get(meme.id) || null
+          profiles: profilesMap.get(meme.user_id) || null
         }));
 
-        setMemes(memesWithVotes);
-      } else {
-        setMemes(memesData || []);
+        // If user is authenticated, fetch their votes
+        if (user) {
+          try {
+            const { data: votesData } = await supabase
+              .from('votes')
+              .select('meme_id, vote_type')
+              .eq('user_id', user.id);
+
+            const votesMap = new Map(
+              votesData?.map(vote => [vote.meme_id, vote.vote_type]) || []
+            );
+
+            const memesWithVotes = enrichedMemes.map(meme => ({
+              ...meme,
+              user_vote: votesMap.get(meme.id) || null
+            }));
+
+            setMemes(memesWithVotes);
+          } catch (voteError) {
+            console.warn('Could not fetch user votes:', voteError);
+            setMemes(enrichedMemes);
+          }
+        } else {
+          setMemes(enrichedMemes);
+        }
+      } catch (profileError) {
+        console.warn('Could not fetch profiles:', profileError);
+        // Fall back to memes without profile data
+        setMemes(memesData.map(meme => ({ ...meme, profiles: null })));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching memes:', error);
+      
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        setConnectionError('Network request blocked - check browser extensions');
+      } else {
+        setConnectionError(`Network error: ${error.message || 'Unknown error'}`);
+      }
+      
       toast({
-        title: "Error",
-        description: "Failed to load memes",
+        title: "Connection Failed",
+        description: "Can't connect to server. Check your internet connection.",
         variant: "destructive",
       });
     } finally {
@@ -199,6 +238,7 @@ export const useMemes = () => {
   return {
     memes,
     loading,
+    connectionError,
     fetchMemes,
     voteMeme,
     createMeme

@@ -1,12 +1,50 @@
 import { useState, useEffect } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle, Wifi, WifiOff } from 'lucide-react';
+import { AlertTriangle, Wifi, WifiOff, RefreshCw, ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 
 export const ConnectivityCheck = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [supabaseConnected, setSupabaseConnected] = useState<boolean | null>(null);
-  const [extensionWarning, setExtensionWarning] = useState(false);
+  const [connectionError, setConnectionError] = useState<string>('');
+  const [testing, setTesting] = useState(false);
+
+  const testConnection = async () => {
+    setTesting(true);
+    setConnectionError('');
+    setSupabaseConnected(null);
+    
+    try {
+      // Test basic Supabase connectivity
+      const { data, error } = await supabase.from('memes').select('count').limit(1);
+      
+      if (error) {
+        console.error('Supabase connectivity test failed:', error);
+        setConnectionError(`Database error: ${error.message}`);
+        setSupabaseConnected(false);
+      } else {
+        setSupabaseConnected(true);
+        setConnectionError('');
+      }
+    } catch (err: any) {
+      console.error('Supabase connectivity test failed:', err);
+      setSupabaseConnected(false);
+      
+      // Detailed error analysis
+      if (err instanceof TypeError && err.message === 'Failed to fetch') {
+        setConnectionError('Network request blocked - likely by browser extension or CORS configuration');
+      } else if (err.message?.includes('CORS')) {
+        setConnectionError('CORS configuration issue - check Supabase dashboard settings');
+      } else if (err.message?.includes('NetworkError')) {
+        setConnectionError('Network connectivity issue');
+      } else {
+        setConnectionError(`Connection error: ${err.message || 'Unknown error'}`);
+      }
+    } finally {
+      setTesting(false);
+    }
+  };
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -15,31 +53,8 @@ export const ConnectivityCheck = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Test Supabase connectivity
-    const testSupabaseConnection = async () => {
-      try {
-        // Test Supabase connection by making a simple query
-        const { data, error } = await supabase.from('profiles').select('count').limit(1);
-        
-        if (error && error.code !== 'PGRST116') { // PGRST116 is "relation does not exist" which is expected if tables aren't created yet
-          console.error('Supabase connectivity test failed:', error);
-          setSupabaseConnected(false);
-          setExtensionWarning(true);
-        } else {
-          setSupabaseConnected(true);
-        }
-      } catch (err) {
-        console.error('Supabase connectivity test failed:', err);
-        setSupabaseConnected(false);
-        
-        // Check if it's likely a browser extension issue
-        if (err instanceof TypeError && err.message === 'Failed to fetch') {
-          setExtensionWarning(true);
-        }
-      }
-    };
-
-    testSupabaseConnection();
+    // Initial connection test
+    testConnection();
 
     return () => {
       window.removeEventListener('online', handleOnline);
@@ -60,17 +75,43 @@ export const ConnectivityCheck = () => {
 
   if (supabaseConnected === false) {
     return (
-      <Alert className="mb-4 border-warning">
+      <Alert className="mb-4 border-destructive">
         <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>
-          {extensionWarning ? (
-            <>
-              Connection to authentication service blocked. This is likely caused by a browser extension. 
-              Try disabling extensions or using incognito mode.
-            </>
-          ) : (
-            'Unable to connect to authentication service. Please try again later.'
-          )}
+        <AlertDescription className="space-y-3">
+          <div>
+            <strong>Database Connection Failed</strong>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {connectionError}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={testConnection}
+              disabled={testing}
+            >
+              <RefreshCw className={`h-3 w-3 mr-1 ${testing ? 'animate-spin' : ''}`} />
+              Test Again
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+            >
+              <a
+                href="https://supabase.com/dashboard/project/uneaqjswhthtrpmqyqfk/settings/api"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <ExternalLink className="h-3 w-3 mr-1" />
+                Supabase Settings
+              </a>
+            </Button>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            💡 Try: Disable browser extensions, check CORS settings, or verify network connectivity
+          </div>
         </AlertDescription>
       </Alert>
     );
@@ -78,10 +119,10 @@ export const ConnectivityCheck = () => {
 
   if (supabaseConnected === true) {
     return (
-      <Alert className="mb-4 border-green-500">
-        <Wifi className="h-4 w-4" />
+      <Alert className="mb-4 border-emerald-500 bg-emerald-500/10">
+        <Wifi className="h-4 w-4 text-emerald-500" />
         <AlertDescription>
-          Connected to authentication service successfully.
+          ✅ Database connection successful
         </AlertDescription>
       </Alert>
     );
